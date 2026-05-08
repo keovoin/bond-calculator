@@ -1,4 +1,4 @@
-/* Staff-facing calculator */
+/* Staff-facing calculator (fully client-side) */
 
 const state = {
   bonds: [],
@@ -20,16 +20,10 @@ document.querySelectorAll('.tabs .tab').forEach(btn =>
   btn.addEventListener('click', () => activateTab(btn.dataset.tab))
 );
 
-/* ---------- Bond loading ---------- */
-async function loadBonds() {
-  const wrap = document.getElementById('bondSelectWrap');
-  try {
-    const { bonds } = await fetchJson('/api/bonds');
-    state.bonds = bonds;
-    renderBondPicker();
-  } catch (e) {
-    wrap.innerHTML = `<div class="bond-empty">Could not load bonds: ${escapeHtml(e.message)}</div>`;
-  }
+/* ---------- Bond picker ---------- */
+function loadBonds() {
+  state.bonds = BC.listBonds().filter(b => b.is_active);
+  renderBondPicker();
 }
 
 function renderBondPicker() {
@@ -37,23 +31,21 @@ function renderBondPicker() {
   if (!state.bonds.length) {
     wrap.innerHTML = `
       <div class="bond-empty">
-        <strong>No bonds available yet.</strong><br />
-        An administrator needs to add a bond in the admin panel before calculations can be run.
+        <strong>No bonds available.</strong><br />
+        An administrator needs to add a bond before calculations can run.
       </div>`;
     return;
   }
-
   wrap.innerHTML = `<div class="bond-grid">${state.bonds.map(bondChip).join('')}</div>`;
   wrap.querySelectorAll('.bond-chip').forEach(el => {
-    el.addEventListener('click', () => selectBond(Number(el.dataset.id)));
+    el.addEventListener('click', () => selectBond(el.dataset.id));
   });
-  // Auto-select first
   if (!state.selectedBond && state.bonds[0]) selectBond(state.bonds[0].id);
 }
 
 function bondChip(b) {
   return `
-    <button type="button" class="bond-chip" data-id="${b.id}">
+    <button type="button" class="bond-chip" data-id="${escapeHtml(b.id)}">
       <span class="check">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       </span>
@@ -72,7 +64,7 @@ function selectBond(id) {
   if (!b) return;
   state.selectedBond = b;
   document.querySelectorAll('.bond-chip').forEach(el => {
-    el.classList.toggle('selected', Number(el.dataset.id) === id);
+    el.classList.toggle('selected', el.dataset.id === id);
   });
   document.getElementById('minHint').textContent =
     `Minimum: ${b.currency} ${fmt.number(b.min_investment)}`;
@@ -111,37 +103,48 @@ document.getElementById('calcBtn').addEventListener('click', async (e) => {
   const errBox = document.getElementById('calcError');
   errBox.classList.add('hidden');
 
-  if (!state.selectedBond) {
+  const b = state.selectedBond;
+  if (!b) {
     errBox.textContent = 'Please select a bond first.';
     errBox.classList.remove('hidden');
     return;
   }
 
-  const payload = {
-    bondId: state.selectedBond.id,
-    investAmount: parseFloat(amountEl.value),
-    issueDate: document.getElementById('issueDate').value,
-    residency: document.getElementById('residency').value,
+  const amount = parseFloat(amountEl.value);
+  const issueDate = document.getElementById('issueDate').value;
+  const residency = document.getElementById('residency').value;
+
+  const errs = [];
+  if (!amount || amount <= 0) errs.push('Investment amount is required.');
+  if (amount && amount < b.min_investment)
+    errs.push(`Minimum investment for ${b.name} is ${b.currency} ${fmt.number(b.min_investment)}.`);
+  if (b && amount && b.nominal_price > 0) {
+    const rem = Math.abs(amount / b.nominal_price - Math.round(amount / b.nominal_price));
+    if (rem > 0.0001) errs.push(`Amount must be a multiple of the unit price (${b.currency} ${b.nominal_price}).`);
+  }
+  if (!issueDate) errs.push('Issue date is required.');
+
+  if (errs.length) {
+    errBox.innerHTML = errs.map(e => `<div>&bull; ${escapeHtml(e)}</div>`).join('');
+    errBox.classList.remove('hidden');
+    return;
+  }
+
+  await withLoading(btn, new Promise(r => setTimeout(r, 150)));
+
+  const result = buildSchedule(b, { investAmount: amount, issueDate, residency });
+  state.lastResult = {
+    ...result,
+    bond: b,
     customer: {
       name: document.getElementById('custName').value.trim(),
       ref: document.getElementById('custRef').value.trim(),
     },
   };
 
-  try {
-    const result = await withLoading(btn, fetchJson('/api/calculate', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }));
-    state.lastResult = result;
-    renderSchedule(result);
-    activateTab('schedule');
-    toast('Schedule generated', 'success');
-  } catch (err) {
-    const errs = err.data && err.data.errors ? err.data.errors : [err.message];
-    errBox.innerHTML = errs.map(e => `<div>&bull; ${escapeHtml(e)}</div>`).join('');
-    errBox.classList.remove('hidden');
-  }
+  renderSchedule(state.lastResult);
+  activateTab('schedule');
+  toast('Schedule generated', 'success');
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
@@ -164,42 +167,38 @@ function renderSchedule(res) {
   document.getElementById('schedSubtitle').textContent =
     `Issued ${fmt.date(inputs.issueDate)} · Matures ${fmt.date(inputs.maturityDate)} · ${inputs.tenor} year${inputs.tenor > 1 ? 's' : ''} · Coupon ${inputs.couponRate}% p.a.`;
 
-  const meta = [
-    metaItem('Customer', customer && customer.name ? customer.name : '—'),
-    customer && customer.ref ? metaItem('Customer Ref', customer.ref) : '',
-    metaItem('Principal', `${currency} ${fmt.number(inputs.investAmount)}`),
+  document.getElementById('customerMeta').innerHTML = [
+    metaItem('Customer', customer.name || '—'),
+    customer.ref ? metaItem('Customer Ref', customer.ref) : '',
+    metaItem('Principal', `${currency} ${fmt.money2(inputs.investAmount)}`),
     metaItem('Units', fmt.number(inputs.bondUnits)),
     metaItem('Residency / WHT', `${inputs.residency} · ${inputs.whtPct}%`),
-    metaItem('Default rate', `${inputs.defaultRate}% p.a.`),
+    metaItem('Default rate (late payment)', `${inputs.defaultRate}% p.a.`),
   ].join('');
-  document.getElementById('customerMeta').innerHTML = meta;
 
-  // Summary
-  const sum = document.getElementById('summaryGrid');
-  sum.innerHTML = [
-    summaryItem('Principal', `${currency} ${fmt.number(inputs.investAmount)}`),
+  document.getElementById('summaryGrid').innerHTML = [
+    summaryItem('Principal', `${currency} ${fmt.money2(inputs.investAmount)}`),
     summaryItem('Coupon rate', `${inputs.couponRate}% p.a.`),
     summaryItem('Maturity', fmt.date(inputs.maturityDate)),
-    summaryItem('Total gross interest', `${currency} ${fmt.number(totals.totalGrossInterest.toFixed(2))}`),
-    summaryItem('Total WHT', `${currency} ${fmt.number(totals.totalTax.toFixed(2))}`),
-    summaryItem('Total net interest', `${currency} ${fmt.number(totals.totalNetInterest.toFixed(2))}`),
-    summaryItem('Principal repaid', `${currency} ${fmt.number(totals.totalPrincipalRepaid.toFixed(2))}`),
-    summaryItem('Total cash to customer', `${currency} ${fmt.number(totals.totalCashToCustomer.toFixed(2))}`, true),
+    summaryItem('Total gross interest', `${currency} ${fmt.money2(totals.totalGrossInterest)}`),
+    summaryItem('Total WHT', `${currency} ${fmt.money2(totals.totalTax)}`),
+    summaryItem('Total net interest', `${currency} ${fmt.money2(totals.totalNetInterest)}`),
+    summaryItem('Principal repaid', `${currency} ${fmt.money2(totals.totalPrincipalRepaid)}`),
+    summaryItem('Total cash to customer', `${currency} ${fmt.money2(totals.totalCashToCustomer)}`, true),
   ].join('');
 
-  // Table
   const body = rows.map(r => `
-    <tr class="${r.isAnniversary ? 'anniversary' : ''}" style="animation-delay: ${Math.min(r.period, 30) * 12}ms">
+    <tr class="${r.isAnniversary ? 'anniversary' : ''}" style="animation-delay: ${Math.min(r.period, 30) * 10}ms">
       <td class="num">${r.period}</td>
       <td>${fmt.date(r.date)}</td>
       <td class="num">${r.daysInPeriod}</td>
-      <td class="num">${fmt.number(r.openingPrincipal.toFixed(2))}</td>
-      <td class="num">${fmt.number(r.grossInterest.toFixed(2))}</td>
-      <td class="num">${fmt.number(r.tax.toFixed(2))}</td>
-      <td class="num">${fmt.number(r.netInterest.toFixed(2))}</td>
-      <td class="num">${r.principalRepaid > 0 ? fmt.number(r.principalRepaid.toFixed(2)) : '—'}</td>
-      <td class="num">${fmt.number(r.totalCashToCustomer.toFixed(2))}</td>
-      <td class="num">${fmt.number(r.closingPrincipal.toFixed(2))}</td>
+      <td class="num">${fmt.money2(r.openingPrincipal)}</td>
+      <td class="num">${fmt.money2(r.grossInterest)}</td>
+      <td class="num">${fmt.money2(r.tax)}</td>
+      <td class="num">${fmt.money2(r.netInterest)}</td>
+      <td class="num">${r.principalRepaid > 0 ? fmt.money2(r.principalRepaid) : '—'}</td>
+      <td class="num">${fmt.money2(r.totalCashToCustomer)}</td>
+      <td class="num">${fmt.money2(r.closingPrincipal)}</td>
     </tr>`).join('');
 
   document.getElementById('scheduleWrap').innerHTML = `
@@ -223,11 +222,11 @@ function renderSchedule(res) {
         <tfoot>
           <tr>
             <td colspan="4" style="text-align:right">Totals</td>
-            <td class="num">${fmt.number(totals.totalGrossInterest.toFixed(2))}</td>
-            <td class="num">${fmt.number(totals.totalTax.toFixed(2))}</td>
-            <td class="num">${fmt.number(totals.totalNetInterest.toFixed(2))}</td>
-            <td class="num">${fmt.number(totals.totalPrincipalRepaid.toFixed(2))}</td>
-            <td class="num">${fmt.number(totals.totalCashToCustomer.toFixed(2))}</td>
+            <td class="num">${fmt.money2(totals.totalGrossInterest)}</td>
+            <td class="num">${fmt.money2(totals.totalTax)}</td>
+            <td class="num">${fmt.money2(totals.totalNetInterest)}</td>
+            <td class="num">${fmt.money2(totals.totalPrincipalRepaid)}</td>
+            <td class="num">${fmt.money2(totals.totalCashToCustomer)}</td>
             <td class="num">—</td>
           </tr>
         </tfoot>
@@ -254,15 +253,10 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const lines = [headers.join(',')];
   rows.forEach(r => {
     lines.push([
-      r.period,
-      r.date,
-      r.daysInPeriod,
-      r.openingPrincipal.toFixed(2),
-      r.grossInterest.toFixed(2),
-      r.tax.toFixed(2),
-      r.netInterest.toFixed(2),
-      r.principalRepaid.toFixed(2),
-      r.totalCashToCustomer.toFixed(2),
+      r.period, r.date, r.daysInPeriod,
+      r.openingPrincipal.toFixed(2), r.grossInterest.toFixed(2),
+      r.tax.toFixed(2), r.netInterest.toFixed(2),
+      r.principalRepaid.toFixed(2), r.totalCashToCustomer.toFixed(2),
       r.closingPrincipal.toFixed(2),
     ].join(','));
   });
@@ -280,3 +274,8 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 /* ---------- Init ---------- */
 document.getElementById('issueDate').value = new Date().toISOString().slice(0, 10);
 loadBonds();
+
+// Refresh bonds if admin edits them in another tab
+window.addEventListener('storage', (e) => {
+  if (e.key === 'bc.bonds') loadBonds();
+});

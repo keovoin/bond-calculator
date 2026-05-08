@@ -1,16 +1,13 @@
-/* Admin panel controller */
+/* Admin panel (fully client-side) */
 
 const admin = {
   bonds: [],
-  editing: null, // bond object or null = new
+  editing: null,
 };
 
 /* ---------- Session check on load ---------- */
-(async function init() {
-  try {
-    const s = await fetchJson('/api/admin/session');
-    if (s.authenticated) showDashboard(s.username);
-  } catch (e) { /* stay on login */ }
+(function init() {
+  if (BC.getSession()) showDashboard(BC.getSession());
 })();
 
 /* ---------- Login ---------- */
@@ -27,53 +24,69 @@ async function doLogin() {
   err.classList.add('hidden');
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
-  try {
-    const res = await withLoading(btn, fetchJson('/api/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    }));
-    showDashboard(res.username);
-  } catch (e) {
-    err.textContent = e.message || 'Sign-in failed.';
+
+  await withLoading(btn, new Promise(r => setTimeout(r, 200)));
+
+  const ok = await BC.verifyCredentials(username, password);
+  if (!ok) {
+    err.textContent = 'Invalid username or password.';
     err.classList.remove('hidden');
+    return;
   }
+  BC.setSession(username);
+  showDashboard(username);
 }
 
-async function showDashboard(username) {
+function showDashboard(username) {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('adminScreen').classList.remove('hidden');
   document.getElementById('adminUsername').textContent = username;
-  await loadBonds();
+
+  const banner = document.getElementById('mustChangeBanner');
+  if (BC.isDefaultPassword()) {
+    banner.classList.remove('hidden');
+    switchTab('account');
+    setTimeout(() => {
+      const el = document.getElementById('newPw');
+      if (el) el.focus();
+    }, 200);
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  loadBonds();
 }
 
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await fetchJson('/api/admin/logout', { method: 'POST' }).catch(() => {});
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  BC.clearSession();
   window.location.href = '/admin';
 });
 
 /* ---------- Tabs ---------- */
+function switchTab(name) {
+  document.querySelectorAll('[data-admin-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.adminTab === name)
+  );
+  document.querySelectorAll('#admin-bonds, #admin-account').forEach(p =>
+    p.classList.toggle('active', p.id === `admin-${name}`)
+  );
+}
 document.querySelectorAll('[data-admin-tab]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const name = btn.dataset.adminTab;
-    document.querySelectorAll('[data-admin-tab]').forEach(b =>
-      b.classList.toggle('active', b.dataset.adminTab === name)
-    );
-    document.querySelectorAll('#admin-bonds, #admin-account').forEach(p =>
-      p.classList.toggle('active', p.id === `admin-${name}`)
-    );
-  });
+  btn.addEventListener('click', () => switchTab(btn.dataset.adminTab));
+});
+
+document.getElementById('changePwHeaderBtn').addEventListener('click', () => {
+  switchTab('account');
+  setTimeout(() => {
+    const el = document.getElementById('newPw');
+    if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 150);
 });
 
 /* ---------- Bonds list ---------- */
-async function loadBonds() {
-  const wrap = document.getElementById('bondListWrap');
-  try {
-    const { bonds } = await fetchJson('/api/admin/bonds');
-    admin.bonds = bonds;
-    renderBondsList();
-  } catch (e) {
-    wrap.innerHTML = `<div class="inline-error">${escapeHtml(e.message)}</div>`;
-  }
+function loadBonds() {
+  admin.bonds = BC.listBonds();
+  renderBondsList();
 }
 
 function renderBondsList() {
@@ -91,15 +104,9 @@ function renderBondsList() {
       <table class="data">
         <thead>
           <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Issuer</th>
-            <th>Currency</th>
-            <th class="num">Unit</th>
-            <th class="num">Coupon</th>
-            <th class="num">Tenor</th>
-            <th>Status</th>
-            <th></th>
+            <th>Code</th><th>Name</th><th>Issuer</th><th>Currency</th>
+            <th class="num">Unit</th><th class="num">Coupon</th>
+            <th class="num">Tenor</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -113,13 +120,13 @@ function renderBondsList() {
               <td class="num">${b.coupon_rate}%</td>
               <td class="num">${b.tenor_years}y</td>
               <td><span class="pill ${b.is_active ? 'active' : 'inactive'}">${b.is_active ? 'Active' : 'Hidden'}</span></td>
-              <td class="num"><button class="btn small ghost" data-edit="${b.id}">Edit</button></td>
+              <td class="num"><button class="btn small ghost" data-edit="${escapeHtml(b.id)}">Edit</button></td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
   wrap.querySelectorAll('[data-edit]').forEach(el => {
-    el.addEventListener('click', () => openBondEditor(Number(el.dataset.edit)));
+    el.addEventListener('click', () => openBondEditor(el.dataset.edit));
   });
 }
 
@@ -164,7 +171,6 @@ function openBondEditor(id) {
   document.getElementById('f_is_active').value = d.is_active ? '1' : '0';
 
   renderAmortGrid(d.amort_percents);
-
   modal.classList.remove('hidden');
   setTimeout(() => document.getElementById('f_code').focus(), 80);
 }
@@ -176,20 +182,12 @@ function closeModal() {
 
 function defaultBond() {
   return {
-    code: '',
-    name: '',
-    issuer: '',
+    code: '', name: '', issuer: '',
     bond_type: 'Unsecured and Subordinated in Registered Form Bond (Fixed Interest)',
     currency: 'USD',
-    nominal_price: 25,
-    min_investment: 500000,
-    bonds_offered: 4100000,
-    coupon_rate: 8.5,
-    default_spread: 2,
-    day_count: 365,
-    tenor_years: 5,
-    wht_resident: 6,
-    wht_non_resident: 14,
+    nominal_price: 25, min_investment: 500000, bonds_offered: 4100000,
+    coupon_rate: 8.5, default_spread: 2, day_count: 365, tenor_years: 5,
+    wht_resident: 6, wht_non_resident: 14,
     amort_percents: [20, 25, 33.33, 50, 100],
     market: 'Cambodia Securities Exchange (CSX)',
     broker: 'Royal Group Securities Plc.',
@@ -205,11 +203,10 @@ function setVal(id, v) {
   if (el) el.value = v ?? '';
 }
 
-/* ---------- Amortization grid (dynamic) ---------- */
+/* ---------- Amortization grid ---------- */
 document.getElementById('f_tenor_years').addEventListener('input', () => {
   const tenor = Number(document.getElementById('f_tenor_years').value) || 0;
   const current = readAmort();
-  // Preserve existing values, extend / trim to new length
   const next = [];
   for (let i = 0; i < tenor; i++) {
     next.push(current[i] !== undefined ? current[i] : (i === tenor - 1 ? 100 : 0));
@@ -253,6 +250,25 @@ function refreshAmortCheck() {
   el.innerHTML = `Drawdown per year (of original): ${fmtArr}. Total: <strong style="color:${ok ? 'var(--success)' : 'var(--danger)'}">${total.toFixed(2)}%</strong> ${ok ? '&#10003;' : '&#9888; must equal 100%'}`;
 }
 
+function validate(p) {
+  const errs = [];
+  if (!p.code) errs.push('Bond code is required.');
+  if (!p.name) errs.push('Bond name is required.');
+  if (!p.issuer) errs.push('Issuer is required.');
+  if (!(p.nominal_price > 0)) errs.push('Unit price must be greater than 0.');
+  if (!(p.coupon_rate >= 0)) errs.push('Coupon rate must be 0 or greater.');
+  if (!(Number.isInteger(p.tenor_years) && p.tenor_years > 0)) errs.push('Tenor must be a whole number of years.');
+  if (p.amort_percents.length !== p.tenor_years) errs.push('Amortization list must match the tenor.');
+  let rem = 100, total = 0;
+  p.amort_percents.forEach(pc => { const r = rem * (pc / 100); total += r; rem -= r; });
+  if (Math.abs(total - 100) > 0.1) errs.push(`Amortization percentages must fully repay the principal (currently ${total.toFixed(2)}%).`);
+
+  // Unique code check
+  const dup = BC.listBonds().some(b => b.code === p.code && b.id !== (admin.editing && admin.editing.id));
+  if (dup) errs.push('A bond with that code already exists.');
+  return errs;
+}
+
 /* ---------- Save / delete ---------- */
 document.getElementById('saveBondBtn').addEventListener('click', async (e) => {
   const btn = e.currentTarget;
@@ -260,11 +276,12 @@ document.getElementById('saveBondBtn').addEventListener('click', async (e) => {
   err.classList.add('hidden');
 
   const payload = {
+    id: admin.editing ? admin.editing.id : null,
     code: v('f_code'),
     name: v('f_name'),
     issuer: v('f_issuer'),
     bond_type: v('f_bond_type'),
-    currency: v('f_currency'),
+    currency: v('f_currency').toUpperCase() || 'USD',
     nominal_price: Number(v('f_nominal_price')),
     min_investment: Number(v('f_min_investment')),
     bonds_offered: Number(v('f_bonds_offered')),
@@ -283,35 +300,28 @@ document.getElementById('saveBondBtn').addEventListener('click', async (e) => {
     is_active: v('f_is_active') === '1',
   };
 
-  try {
-    const url = admin.editing ? `/api/admin/bonds/${admin.editing.id}` : '/api/admin/bonds';
-    const method = admin.editing ? 'PUT' : 'POST';
-    await withLoading(btn, fetchJson(url, {
-      method,
-      body: JSON.stringify(payload),
-    }));
-    toast(admin.editing ? 'Bond updated' : 'Bond created', 'success');
-    closeModal();
-    await loadBonds();
-  } catch (e) {
-    const msgs = (e.data && e.data.errors) ? e.data.errors : [e.message];
-    err.innerHTML = msgs.map(m => `<div>&bull; ${escapeHtml(m)}</div>`).join('');
+  const errs = validate(payload);
+  if (errs.length) {
+    err.innerHTML = errs.map(m => `<div>&bull; ${escapeHtml(m)}</div>`).join('');
     err.classList.remove('hidden');
     err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
   }
+
+  await withLoading(btn, new Promise(r => setTimeout(r, 150)));
+  BC.upsertBond(payload);
+  toast(admin.editing ? 'Bond updated' : 'Bond created', 'success');
+  closeModal();
+  loadBonds();
 });
 
-document.getElementById('deleteBondBtn').addEventListener('click', async () => {
+document.getElementById('deleteBondBtn').addEventListener('click', () => {
   if (!admin.editing) return;
   if (!confirm(`Delete bond "${admin.editing.name}"? This cannot be undone.`)) return;
-  try {
-    await fetchJson(`/api/admin/bonds/${admin.editing.id}`, { method: 'DELETE' });
-    toast('Bond deleted', 'success');
-    closeModal();
-    await loadBonds();
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  BC.deleteBond(admin.editing.id);
+  toast('Bond deleted', 'success');
+  closeModal();
+  loadBonds();
 });
 
 function v(id) { return (document.getElementById(id).value || '').toString().trim(); }
@@ -324,25 +334,25 @@ document.getElementById('changePwBtn').addEventListener('click', async (e) => {
   err.classList.add('hidden');
   ok.classList.add('hidden');
 
-  const cur = document.getElementById('curPw').value;
   const n1 = document.getElementById('newPw').value;
   const n2 = document.getElementById('newPw2').value;
 
-  if (n1.length < 8) { err.textContent = 'New password must be at least 8 characters.'; err.classList.remove('hidden'); return; }
+  if (n1.length < 4) { err.textContent = 'New password must be at least 4 characters.'; err.classList.remove('hidden'); return; }
   if (n1 !== n2) { err.textContent = 'New passwords do not match.'; err.classList.remove('hidden'); return; }
 
-  try {
-    await withLoading(btn, fetchJson('/api/admin/password', {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword: cur, newPassword: n1 }),
-    }));
-    ok.textContent = 'Password updated.';
-    ok.classList.remove('hidden');
-    document.getElementById('curPw').value = '';
-    document.getElementById('newPw').value = '';
-    document.getElementById('newPw2').value = '';
-  } catch (e) {
-    err.textContent = e.message;
-    err.classList.remove('hidden');
-  }
+  await withLoading(btn, BC.setPassword(n1));
+  ok.textContent = 'Password updated.';
+  ok.classList.remove('hidden');
+  document.getElementById('newPw').value = '';
+  document.getElementById('newPw2').value = '';
+  document.getElementById('mustChangeBanner').classList.add('hidden');
+  toast('Password changed', 'success');
+});
+
+/* ---------- Reset all (danger zone) ---------- */
+document.getElementById('resetDataBtn').addEventListener('click', () => {
+  if (!confirm('This will delete all bonds and reset the admin password. Continue?')) return;
+  BC.resetAll();
+  toast('All data cleared', 'success');
+  setTimeout(() => window.location.reload(), 600);
 });
