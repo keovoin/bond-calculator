@@ -1,149 +1,50 @@
-# Bond Calculator
+# Bond Calculator (Mockup)
 
-A serverless web application for generating bond coupon and principal repayment
-schedules. Staff pick a bond, enter the customer details, and print or export
-the schedule. Admins manage the bond catalogue on a separate URL.
+A static web mockup for demonstrating bond coupon and principal repayment
+schedules. Staff pick a bond, enter customer details, and print a schedule.
+Admins manage the bond catalogue on a separate URL.
 
-Runs on **Vercel** with a **Turso** (libSQL over HTTP) database.
+**Fully static** — no backend, no database, no environment variables.
+All data lives in the browser's `localStorage` on each device.
 
----
+## Deploy
 
-## Live URLs
+Drop this folder on Vercel (or any static host) — no build step required.
+Vercel auto-detects it as a static site.
 
-| URL            | Audience  | Purpose                                 |
-|----------------|-----------|-----------------------------------------|
-| `/`            | Staff     | Pick bond, enter customer, get schedule |
-| `/admin`       | Admins    | Login + bond management                 |
-| `/admin/setup` | First run | Create the initial admin (one time)     |
+## URLs
 
----
+| URL       | Audience | Purpose                          |
+|-----------|----------|----------------------------------|
+| `/`       | Staff    | Calculator + schedule viewer     |
+| `/admin`  | Admins   | Login + bond management          |
 
-## One-time deployment on Vercel
+## Admin login
 
-### 1. Create a Turso database (free)
+- **Username:** `keovoin`
+- **Password:** `admin`
 
-```bash
-# Install Turso CLI once, then:
-turso auth signup         # or: turso auth login
-turso db create bond-calc
-turso db show bond-calc --url          # <-- copy this
-turso db tokens create bond-calc       # <-- copy this
-```
-
-Keep the two values handy — you'll paste them into Vercel in a moment.
-
-### 3. Add environment variables on Vercel
-
-**Vercel dashboard → your project → Settings → Environment Variables**
-
-Required:
-
-| Name | Value |
-|------|-------|
-| `TURSO_DATABASE_URL` | The `libsql://...` URL from step 2 |
-| `TURSO_AUTH_TOKEN` | The token from step 2 |
-| `JWT_SECRET` | Any 32+ random characters (see below) |
-| `NODE_ENV` | `production` |
-
-Optional — **skip the `/admin/setup` step by auto-seeding an admin account**:
-
-| Name | Value |
-|------|-------|
-| `SEED_ADMIN_USERNAME` | e.g. `keovoin` |
-| `SEED_ADMIN_PASSWORD` | e.g. `admin` (choose any) |
-
-If both seed variables are set **and** no admin exists yet, the first
-visit to any API endpoint creates that admin automatically. The admin is
-flagged as "must change password" — the panel shows a prominent yellow
-warning banner and jumps straight to the password-change form at next login.
-Once you change the password, the warning disappears and the seed variables
-become no-ops.
-
-Generate a strong `JWT_SECRET`:
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-### 4. Redeploy
-
-Push the branch or hit "Redeploy" in the Vercel dashboard.
-
-### 5. First-time admin setup
-
-Two options:
-
-- **With seed vars set:** go directly to `https://YOUR-APP.vercel.app/admin`
-  and sign in with `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`. You'll be
-  prompted to change the password immediately.
-- **Without seed vars:** visit `https://YOUR-APP.vercel.app/admin/setup`
-  and create your account. That URL becomes inaccessible after the first
-  account exists.
-
----
-
-## Local development
-
-```bash
-npm install
-npm install -g vercel      # once
-vercel link                # link to your Vercel project
-vercel env pull .env.local # pull env vars down
-npm run dev                # runs `vercel dev`
-```
-
-Open `http://localhost:3000`.
-
----
+On first sign-in a yellow banner prompts the admin to change the password.
+After that, the banner disappears and the new password is stored (hashed
+with SHA-256) in the browser's `localStorage`.
 
 ## Features
 
-- **Multi-bond catalogue** — any number of bonds, each with its own issuer,
-  currency, unit price, coupon rate, tenor, WHT rates, min investment and
-  amortization schedule.
-- **Daily interest accrual + monthly payments** — no holiday adjustment.
-- **Annual straight-line principal amortization** via "percent of remaining"
-  schedule. The default `[20, 25, 33.33, 50, 100]` repays 20% of original
-  each year.
-- **Withholding tax** applied per coupon (6% resident / 14% non-resident by
-  default, both editable per bond).
-- **Default-rate reference** shown on the schedule (coupon + spread, e.g.
-  10.5% p.a.) for staff to apply manually to late coupons.
-- **Print / Save PDF** and **CSV export** from the schedule view.
-- **Mobile-responsive**, animated UI, printable styles.
+- Multi-bond catalogue — unlimited bonds, each with its own issuer, currency,
+  unit price, coupon rate, tenor, WHT rates, min investment and amortization
+  schedule.
+- Staff-facing calculator with bond picker and two-way amount/units sync.
+- Monthly schedule with daily-accrued coupon interest, annual principal
+  amortization, WHT per payment, default-rate reference.
+- Print-ready layout and CSV export.
+- Fully mobile responsive, animated UI, respects `prefers-reduced-motion`.
 
-## Security
+## Notes on storage
 
-- First-time setup page is automatically disabled after one admin exists.
-- No default password — admins choose their own.
-- Passwords hashed with bcrypt (cost 10).
-- Auth is a signed JWT in an httpOnly cookie (stateless, 8h expiry).
-- Timing-safe login: bcrypt compare runs even for nonexistent users.
-
-## Project structure
-
-```
-/api/                     Serverless functions (one file per route)
-  bonds.js                GET active bonds
-  calculate.js            POST build a schedule
-  admin/
-    login.js              POST sign in
-    logout.js             POST sign out
-    session.js            GET current session
-    setup.js              POST create first admin
-    setup-status.js       GET whether setup is needed
-    password.js           POST change password
-    bonds.js              GET/POST admin bond CRUD
-    bonds/[id].js         GET/PUT/DELETE a specific bond
-/lib/                     Shared modules
-  auth.js                 JWT + cookie helpers
-  calc.js                 Schedule calculation engine
-  db.js                   Turso/libSQL access
-  bondValidation.js       Bond payload sanitisation
-  util.js                 Request helpers
-/public/                  Static assets served by Vercel
-  index.html              Staff calculator
-  admin.html              Admin panel
-  setup.html              First-run setup page
-  assets/                 CSS + JS
-vercel.json               Rewrites for /admin, /admin/setup
-```
+- Bond data is stored per browser / device under `localStorage` key
+  `bc.bonds`. Refreshing or re-opening the site keeps the data.
+- The first visit seeds one sample bond so you can calculate immediately.
+- Admin panel includes a "Reset all data" button that clears bonds +
+  password on that device.
+- Since there is no server, different devices have independent data.
+  Good enough for a mockup; for production, re-introduce a backend.

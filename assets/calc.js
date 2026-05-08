@@ -1,16 +1,6 @@
-/**
- * Bond schedule calculation engine.
- *
- * Given a bond definition and an investment, produces the monthly coupon
- * schedule with annual principal amortization on each issue-date anniversary.
- *
- * Coupons accrue daily on the outstanding principal and are credited on the
- * scheduled payment date (no holiday delay).
- *
- * Principal is repaid on each anniversary using a "percentage of remaining"
- * schedule. The default [20, 25, 33.33, 50, 100] gives a straight-line
- * amortization — each year repays 20% of the original principal.
- */
+/* =========================================================================
+   Bond schedule calculation engine (client-side).
+   ========================================================================= */
 
 function addMonths(date, months) {
   const d = new Date(date.getTime());
@@ -122,5 +112,3 @@ function buildSchedule(bond, { investAmount, issueDate, residency }) {
     },
   };
 }
-
-module.exports = { buildSchedule, parseDateUTC };

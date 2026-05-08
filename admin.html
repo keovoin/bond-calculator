@@ -109,15 +109,11 @@
           <div class="card-header">
             <div>
               <h2>Change password</h2>
-              <p class="subtitle">Choose a strong password. Minimum 8 characters.</p>
+              <p class="subtitle">Pick a new password to replace the default.</p>
             </div>
           </div>
 
           <div class="grid">
-            <label>
-              Current password
-              <input id="curPw" type="password" autocomplete="current-password" />
-            </label>
             <label>
               New password
               <input id="newPw" type="password" autocomplete="new-password" />
@@ -136,6 +132,18 @@
               <span class="label">Update password</span>
               <span class="spinner"></span>
             </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Danger zone</h2>
+              <p class="subtitle">Clear all bonds and reset the admin password on this device.</p>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="btn danger" id="resetDataBtn">Reset all data</button>
           </div>
         </div>
       </section>
@@ -210,16 +218,7 @@
   </div>
 
   <script src="/assets/common.js"></script>
-  <script>
-    // Redirect to setup on first run. This replaces the server-side redirect
-    // we used on the Express version (can't redirect from vercel.json based on DB state).
-    (async () => {
-      try {
-        const r = await fetch('/api/admin/setup-status').then(r => r.json());
-        if (r.setupRequired) window.location.replace('/admin/setup');
-      } catch (e) { /* fall through — login page will still work */ }
-    })();
-  </script>
+  <script src="/assets/store.js"></script>
   <script src="/assets/admin.js"></script>
 </body>
 </html>
