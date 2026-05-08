@@ -50,6 +50,13 @@
 
   <script src="/assets/common.js"></script>
   <script>
+    // If an admin account already exists, this page is off-limits.
+    (async () => {
+      try {
+        const r = await fetch('/api/admin/setup-status').then(r => r.json());
+        if (!r.setupRequired) window.location.replace('/admin');
+      } catch (e) { /* show the form — worst case the server will reject */ }
+    })();
     const btn = document.getElementById('submitBtn');
     const err = document.getElementById('err');
     const ok  = document.getElementById('ok');
