@@ -20,6 +20,10 @@ module.exports = async (req, res) => {
     }
     const token = signSession({ adminId: Number(admin.id), username: admin.username });
     setSessionCookie(res, token);
-    res.json({ ok: true, username: admin.username });
+    res.json({
+      ok: true,
+      username: admin.username,
+      mustChangePassword: !admin.password_changed_at,
+    });
   } catch (e) { handleError(res, e); }
 };

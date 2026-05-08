@@ -58,12 +58,23 @@
         </div>
         <div class="header-actions">
           <a href="/" class="btn small ghost" style="color:white">Open calculator</a>
+          <button class="btn small ghost" id="changePwHeaderBtn" style="color:white">Change password</button>
           <button class="btn small ghost" id="logoutBtn" style="color:white">Sign out</button>
         </div>
       </div>
     </header>
 
     <main>
+      <div id="mustChangeBanner" class="must-change-banner hidden no-print">
+        <div class="must-change-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        </div>
+        <div class="must-change-body">
+          <strong>Please change your password.</strong>
+          <span>You're still using the default password. Pick a new one below to secure your account.</span>
+        </div>
+      </div>
+
       <div class="sidebar-tabs no-print">
         <button class="active" data-admin-tab="bonds">Bonds</button>
         <button data-admin-tab="account">My Account</button>

@@ -32,32 +32,52 @@ turso db tokens create bond-calc       # <-- copy this
 
 Keep the two values handy — you'll paste them into Vercel in a moment.
 
-### 2. Set Vercel environment variables
+### 3. Add environment variables on Vercel
 
-In your Vercel project: **Settings → Environment Variables**, add:
+**Vercel dashboard → your project → Settings → Environment Variables**
 
-| Name                  | Value                                       |
-|-----------------------|---------------------------------------------|
-| `TURSO_DATABASE_URL`  | `libsql://bond-calc-YOURNAME.turso.io`      |
-| `TURSO_AUTH_TOKEN`    | The token from `turso db tokens create`     |
-| `JWT_SECRET`          | A random 32+ character string               |
-| `NODE_ENV`            | `production`                                |
+Required:
 
-Tip for generating a good JWT secret:
+| Name | Value |
+|------|-------|
+| `TURSO_DATABASE_URL` | The `libsql://...` URL from step 2 |
+| `TURSO_AUTH_TOKEN` | The token from step 2 |
+| `JWT_SECRET` | Any 32+ random characters (see below) |
+| `NODE_ENV` | `production` |
+
+Optional — **skip the `/admin/setup` step by auto-seeding an admin account**:
+
+| Name | Value |
+|------|-------|
+| `SEED_ADMIN_USERNAME` | e.g. `keovoin` |
+| `SEED_ADMIN_PASSWORD` | e.g. `admin` (choose any) |
+
+If both seed variables are set **and** no admin exists yet, the first
+visit to any API endpoint creates that admin automatically. The admin is
+flagged as "must change password" — the panel shows a prominent yellow
+warning banner and jumps straight to the password-change form at next login.
+Once you change the password, the warning disappears and the seed variables
+become no-ops.
+
+Generate a strong `JWT_SECRET`:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 3. Redeploy
+### 4. Redeploy
 
 Push the branch or hit "Redeploy" in the Vercel dashboard.
 
-### 4. First-time admin setup
+### 5. First-time admin setup
 
-Visit **`https://YOUR-APP.vercel.app/admin/setup`** and create your account.
-After the first account exists, this URL becomes inaccessible automatically.
+Two options:
 
-From then on, admin access is always at **`/admin`**.
+- **With seed vars set:** go directly to `https://YOUR-APP.vercel.app/admin`
+  and sign in with `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`. You'll be
+  prompted to change the password immediately.
+- **Without seed vars:** visit `https://YOUR-APP.vercel.app/admin/setup`
+  and create your account. That URL becomes inaccessible after the first
+  account exists.
 
 ---
 

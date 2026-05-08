@@ -9,7 +9,7 @@ const admin = {
 (async function init() {
   try {
     const s = await fetchJson('/api/admin/session');
-    if (s.authenticated) showDashboard(s.username);
+    if (s.authenticated) showDashboard(s.username, s.mustChangePassword);
   } catch (e) { /* stay on login */ }
 })();
 
@@ -32,17 +32,31 @@ async function doLogin() {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }));
-    showDashboard(res.username);
+    showDashboard(res.username, res.mustChangePassword);
   } catch (e) {
     err.textContent = e.message || 'Sign-in failed.';
     err.classList.remove('hidden');
   }
 }
 
-async function showDashboard(username) {
+async function showDashboard(username, mustChangePassword) {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('adminScreen').classList.remove('hidden');
   document.getElementById('adminUsername').textContent = username;
+
+  const banner = document.getElementById('mustChangeBanner');
+  if (mustChangePassword) {
+    banner.classList.remove('hidden');
+    // Jump straight to the account tab so the user sees the form
+    switchTab('account');
+    setTimeout(() => {
+      const el = document.getElementById('curPw');
+      if (el) el.focus();
+    }, 200);
+  } else {
+    banner.classList.add('hidden');
+  }
+
   await loadBonds();
 }
 
@@ -52,16 +66,25 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 });
 
 /* ---------- Tabs ---------- */
+function switchTab(name) {
+  document.querySelectorAll('[data-admin-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.adminTab === name)
+  );
+  document.querySelectorAll('#admin-bonds, #admin-account').forEach(p =>
+    p.classList.toggle('active', p.id === `admin-${name}`)
+  );
+}
 document.querySelectorAll('[data-admin-tab]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const name = btn.dataset.adminTab;
-    document.querySelectorAll('[data-admin-tab]').forEach(b =>
-      b.classList.toggle('active', b.dataset.adminTab === name)
-    );
-    document.querySelectorAll('#admin-bonds, #admin-account').forEach(p =>
-      p.classList.toggle('active', p.id === `admin-${name}`)
-    );
-  });
+  btn.addEventListener('click', () => switchTab(btn.dataset.adminTab));
+});
+
+// Header "Change password" shortcut
+document.getElementById('changePwHeaderBtn').addEventListener('click', () => {
+  switchTab('account');
+  setTimeout(() => {
+    const el = document.getElementById('curPw');
+    if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 150);
 });
 
 /* ---------- Bonds list ---------- */
@@ -341,6 +364,9 @@ document.getElementById('changePwBtn').addEventListener('click', async (e) => {
     document.getElementById('curPw').value = '';
     document.getElementById('newPw').value = '';
     document.getElementById('newPw2').value = '';
+    // Dismiss the must-change warning banner if it was shown
+    document.getElementById('mustChangeBanner').classList.add('hidden');
+    toast('Password changed', 'success');
   } catch (e) {
     err.textContent = e.message;
     err.classList.remove('hidden');
