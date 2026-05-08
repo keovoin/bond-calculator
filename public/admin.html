@@ -199,6 +199,16 @@
   </div>
 
   <script src="/assets/common.js"></script>
+  <script>
+    // Redirect to setup on first run. This replaces the server-side redirect
+    // we used on the Express version (can't redirect from vercel.json based on DB state).
+    (async () => {
+      try {
+        const r = await fetch('/api/admin/setup-status').then(r => r.json());
+        if (r.setupRequired) window.location.replace('/admin/setup');
+      } catch (e) { /* fall through — login page will still work */ }
+    })();
+  </script>
   <script src="/assets/admin.js"></script>
 </body>
 </html>

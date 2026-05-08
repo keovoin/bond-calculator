@@ -1,18 +1,16 @@
 {
   "name": "bond-calculator",
-  "version": "2.0.0",
-  "description": "Web app for bond coupon and principal schedule calculation",
-  "main": "server.js",
+  "version": "3.0.0",
+  "description": "Serverless web app for bond coupon and principal schedule calculation",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "vercel dev"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.3.0",
-    "express": "^4.21.0",
-    "express-session": "^1.18.0"
+    "cookie": "^0.6.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "engines": {
     "node": ">=18"
