@@ -369,7 +369,12 @@ function renderLogoPreview(base64) {
   if (base64) {
     el.innerHTML = `<img src="${base64}" alt="Logo preview" style="max-height:80px; max-width:200px;" />`;
   } else {
-    el.innerHTML = `<span class="muted small">No logo uploaded</span>`;
+    // Fall back to the bundled sample logo so admin can see what's currently shown
+    el.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0.4rem;">
+        <img src="/assets/sample-logo.svg" alt="Default logo" style="max-height:56px; max-width:56px;" />
+        <span class="muted small">Using default sample logo</span>
+      </div>`;
   }
 }
 

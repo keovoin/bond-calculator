@@ -288,22 +288,16 @@ function applySettings() {
   // Credit line
   const creditEl = document.getElementById('creditLine');
   if (creditEl) creditEl.textContent = s.creditText || '';
+  // Resolve logo source: custom upload > default sample SVG
+  const logoSrc = s.logoBase64 || '/assets/sample-logo.svg';
   // Header logo
   const logoEl = document.getElementById('headerLogo');
   if (logoEl) {
-    if (s.logoBase64) {
-      logoEl.innerHTML = `<img src="${s.logoBase64}" alt="Logo" />`;
-    } else {
-      logoEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V8l7-5 7 5v13"></path><path d="M9 21v-6h6v6"></path></svg>`;
-    }
+    logoEl.innerHTML = `<img src="${logoSrc}" alt="Logo" />`;
   }
   // Print logo
   const printEl = document.getElementById('printLogo');
   if (printEl) {
-    if (s.logoBase64) {
-      printEl.innerHTML = `<img src="${s.logoBase64}" alt="Logo" />`;
-    } else {
-      printEl.innerHTML = '';
-    }
+    printEl.innerHTML = `<img src="${logoSrc}" alt="Logo" />`;
   }
 }
