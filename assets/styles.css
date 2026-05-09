@@ -789,18 +789,34 @@ table.schedule tbody tr { animation: rowIn var(--dur-fast) var(--ease) both; }
 }
 
 
-/* ============ Site Logo ============ */
+/* ============ Site Logo ============
+   Height-locked, width flexible so rectangular logos display at
+   their natural aspect ratio (not cropped or squished).
+   If the user hasn't uploaded a logo, the default SVG is square
+   so this still looks good. */
 .site-logo {
-  width: 44px; height: 44px;
-  display: grid; place-items: center;
+  height: 44px;
+  max-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
+  padding: 4px 6px;
   background: rgba(255,255,255,0.15);
   backdrop-filter: blur(6px);
 }
-.site-logo svg { width: 24px; height: 24px; }
-.site-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* default inline SVG */
+.site-logo > svg { width: 24px; height: 24px; }
+/* uploaded or sample image: height-locked, width auto -> preserves aspect */
+.site-logo img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+}
 
 /* Print logo area (visible only on print) */
 .print-logo-area {
