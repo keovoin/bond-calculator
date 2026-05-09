@@ -274,8 +274,30 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 /* ---------- Init ---------- */
 document.getElementById('issueDate').value = new Date().toISOString().slice(0, 10);
 loadBonds();
+applySettings();
 
 // Refresh bonds if admin edits them in another tab
 window.addEventListener('storage', (e) => {
   if (e.key === 'bc.bonds') loadBonds();
+  if (e.key === 'bc.settings') applySettings();
 });
+
+/* ---------- Apply site settings (logo + credit) ---------- */
+function applySettings() {
+  const s = BC.getSettings();
+  // Credit line
+  const creditEl = document.getElementById('creditLine');
+  if (creditEl) creditEl.textContent = s.creditText || '';
+  // Resolve logo source: custom upload > default sample SVG
+  const logoSrc = s.logoBase64 || '/assets/sample-logo.svg';
+  // Header logo
+  const logoEl = document.getElementById('headerLogo');
+  if (logoEl) {
+    logoEl.innerHTML = `<img src="${logoSrc}" alt="Logo" />`;
+  }
+  // Print logo
+  const printEl = document.getElementById('printLogo');
+  if (printEl) {
+    printEl.innerHTML = `<img src="${logoSrc}" alt="Logo" />`;
+  }
+}
