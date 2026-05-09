@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1f4e8c" />
+  <title>Bond Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div class="inner">
+      <div class="brand">
+        <div class="site-logo" id="headerLogo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21h18"></path>
+            <path d="M5 21V8l7-5 7 5v13"></path>
+            <path d="M9 21v-6h6v6"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Bond Calculator</h1>
+          <p class="subtitle">Fixed-interest bond schedule generator</p>
+        </div>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="calc">Calculator</button>
+        <button class="tab" data-tab="schedule">Schedule</button>
+        <button class="tab" data-tab="learn">Learn</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Print-only logo -->
+  <div class="print-logo-area" id="printLogo"></div>
+
+  <main>
+    <!-- CALCULATOR -->
+    <section id="tab-calc" class="panel active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Choose a bond</h2>
+            <p class="subtitle">Select which bond the customer wants to invest in.</p>
+          </div>
+        </div>
+        <div id="bondSelectWrap" class="bond-select-wrap">
+          <div class="bond-empty">Loading available bonds...</div>
+        </div>
+      </div>
+
+      <div class="card" id="investCard">
+        <div class="card-header">
+          <div>
+            <h2>Customer &amp; investment</h2>
+            <p class="subtitle">Enter the customer details and amount to calculate.</p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <label>
+            Customer Name
+            <input id="custName" type="text" placeholder="e.g. John Doe" autocomplete="off" />
+          </label>
+          <label>
+            Customer ID / Ref
+            <input id="custRef" type="text" placeholder="e.g. CUS-000123" autocomplete="off" />
+          </label>
+          <label>
+            Investment Amount
+            <input id="investAmount" type="number" min="0" step="0.01" placeholder="500000" inputmode="decimal" />
+            <span class="hint" id="minHint">Select a bond to see limits</span>
+          </label>
+          <label>
+            Bond Units
+            <input id="bondUnits" type="number" min="0" step="1" placeholder="20000" inputmode="numeric" />
+            <span class="hint" id="unitHint">Auto-synced with amount</span>
+          </label>
+          <label>
+            Issue Date
+            <input id="issueDate" type="date" />
+          </label>
+          <label>
+            Tax Residency
+            <select id="residency">
+              <option value="resident">Resident (WHT 6%)</option>
+              <option value="non-resident">Non-Resident (WHT 14%)</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="button-row" style="margin-top: 1rem">
+          <button class="btn primary" id="calcBtn">
+            <span class="label">Calculate Schedule</span>
+            <span class="spinner"></span>
+          </button>
+          <button class="btn ghost" id="resetBtn">Reset</button>
+        </div>
+
+        <div id="calcError" class="inline-error hidden"></div>
+      </div>
+    </section>
+
+    <!-- SCHEDULE -->
+    <section id="tab-schedule" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 id="schedTitle">Bond Investment Schedule</h2>
+            <p class="subtitle" id="schedSubtitle">Run a calculation to see the schedule.</p>
+          </div>
+          <div class="button-row no-print">
+            <button class="btn small" id="printBtn" disabled>Print / Save PDF</button>
+            <button class="btn small ghost" id="exportCsvBtn" disabled>Export CSV</button>
+          </div>
+        </div>
+
+        <div id="customerMeta" class="customer-meta"></div>
+        <div id="summaryGrid" class="summary-grid" style="margin-bottom: 1.25rem;"></div>
+
+        <div id="scheduleWrap">
+          <div class="empty-state">
+            <span class="icon">&#128196;</span>
+            <p>No schedule yet. Go to the <strong>Calculator</strong> tab to generate one.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEARN -->
+    <section id="tab-learn" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Understanding Bonds</h2>
+            <p class="subtitle">A beginner-friendly guide to bond investment.</p>
+          </div>
+        </div>
+
+        <div class="learn-content">
+          <h3>What is a Bond?</h3>
+          <p>A <strong>bond</strong> is a fixed-income instrument that represents a loan made by an investor to a borrower (typically a corporation or government). Think of it as an "IOU" with a defined repayment schedule and interest rate.</p>
+
+          <div class="keyword-chips">
+            <span class="keyword">Fixed Income</span>
+            <span class="keyword">Coupon</span>
+            <span class="keyword">Maturity</span>
+            <span class="keyword">Principal</span>
+            <span class="keyword">Issuer</span>
+            <span class="keyword">Face Value</span>
+            <span class="keyword">Yield</span>
+            <span class="keyword">Tenor</span>
+            <span class="keyword">Amortization</span>
+            <span class="keyword">WHT</span>
+          </div>
+
+          <h3>Key Terms Explained</h3>
+          <div class="terms-grid">
+            <div class="term-card">
+              <div class="term-title">Coupon Rate</div>
+              <div class="term-desc">The annual interest rate paid by the issuer. For example, 8.5% p.a. means you earn 8.5% of your principal each year, paid monthly.</div>
+            </div>
+            <div class="term-card">
+              <div class="term-title">Tenor / Maturity</div>
+              <div class="term-desc">The length of time until the bond expires and your principal is fully returned. A 5-year bond matures 5 years from the issue date.</div>
+            </div>
+            <div class="term-card">
+              <div class="term-title">Principal (Face Value)</div>
+              <div class="term-desc">The original amount you invest. This is repaid over time through the amortization schedule.</div>
+            </div>
+            <div class="term-card">
+              <div class="term-title">Amortization</div>
+              <div class="term-desc">How the principal is repaid. In a straight-line amortization, equal portions of the principal are returned each year on the anniversary date.</div>
+            </div>
+            <div class="term-card">
+              <div class="term-title">Withholding Tax (WHT)</div>
+              <div class="term-desc">A tax deducted from your coupon interest before it reaches your account. Residents pay 6%, non-residents pay 14%.</div>
+            </div>
+            <div class="term-card">
+              <div class="term-title">Nominal / Unit Price</div>
+              <div class="term-desc">The price per single bond unit (e.g. USD 25). Your investment amount must be a multiple of this value.</div>
+            </div>
+          </div>
+
+          <h3>Benefits of Bond Investment</h3>
+          <div class="benefits-list">
+            <div class="benefit-item">
+              <div class="benefit-icon">&#9989;</div>
+              <div>
+                <strong>Predictable Income</strong>
+                <p>Bonds pay a fixed coupon on a known schedule. You know exactly how much you'll earn each month — no surprises.</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">&#128274;</div>
+              <div>
+                <strong>Lower Risk than Stocks</strong>
+                <p>Bond holders are creditors, not owners. In a liquidation, bondholders are paid before shareholders. Principal repayment is contractually guaranteed.</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">&#128200;</div>
+              <div>
+                <strong>Capital Preservation</strong>
+                <p>Unlike stocks whose value fluctuates daily, bonds return your full principal over the tenor via amortization.</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">&#127974;</div>
+              <div>
+                <strong>Portfolio Diversification</strong>
+                <p>Bonds have low correlation with equity markets. Adding bonds to a portfolio reduces overall volatility.</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">&#128176;</div>
+              <div>
+                <strong>Regular Cash Flow</strong>
+                <p>Monthly coupon payments provide steady cash flow — ideal for institutions and investors who need liquidity.</p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Bonds vs. Stocks — Comparison</h3>
+          <div class="table-wrap">
+            <table class="data compare-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Bonds</th>
+                  <th>Stocks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Return Type</strong></td>
+                  <td>Fixed coupon (predictable)</td>
+                  <td>Dividends + capital gains (variable)</td>
+                </tr>
+                <tr>
+                  <td><strong>Risk Level</strong></td>
+                  <td>Lower — contractual obligation to pay</td>
+                  <td>Higher — market-dependent</td>
+                </tr>
+                <tr>
+                  <td><strong>Income Schedule</strong></td>
+                  <td>Monthly / quarterly (guaranteed dates)</td>
+                  <td>Quarterly dividends (not guaranteed)</td>
+                </tr>
+                <tr>
+                  <td><strong>Principal Return</strong></td>
+                  <td>Repaid in full over the tenor</td>
+                  <td>No guarantee — depends on market price</td>
+                </tr>
+                <tr>
+                  <td><strong>Priority in Liquidation</strong></td>
+                  <td>Paid before shareholders</td>
+                  <td>Last to be paid (residual claim)</td>
+                </tr>
+                <tr>
+                  <td><strong>Ownership</strong></td>
+                  <td>You are a creditor (lender)</td>
+                  <td>You are an owner (equity holder)</td>
+                </tr>
+                <tr>
+                  <td><strong>Market Volatility</strong></td>
+                  <td>Low — price is relatively stable</td>
+                  <td>High — prices move daily</td>
+                </tr>
+                <tr>
+                  <td><strong>Suitable For</strong></td>
+                  <td>Conservative investors, institutions, steady income</td>
+                  <td>Growth-oriented investors, higher risk tolerance</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="learn-note">
+            <strong>Summary:</strong> Bonds are ideal for investors who value <em>certainty</em> and <em>steady income</em> over high-risk, high-reward strategies. They are often used as the stable foundation of a diversified portfolio.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p class="small muted no-print">
+      Coupons are accrued daily and credited on the scheduled date with no holiday delay.
+      Default interest rate (coupon + spread) applies only to late coupon payments and is calculated manually case by case.
+    </p>
+    <p class="credit-line" id="creditLine">Banking Operation - DBP (For Preview &amp; Testing only)</p>
+  </footer>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/calc.js"></script>
+  <script src="/assets/store.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

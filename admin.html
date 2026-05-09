@@ -58,14 +58,26 @@
         </div>
         <div class="header-actions">
           <a href="/" class="btn small ghost" style="color:white">Open calculator</a>
+          <button class="btn small ghost" id="changePwHeaderBtn" style="color:white">Change password</button>
           <button class="btn small ghost" id="logoutBtn" style="color:white">Sign out</button>
         </div>
       </div>
     </header>
 
     <main>
+      <div id="mustChangeBanner" class="must-change-banner hidden no-print">
+        <div class="must-change-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        </div>
+        <div class="must-change-body">
+          <strong>Please change your password.</strong>
+          <span>You're still using the default password. Pick a new one below to secure your account.</span>
+        </div>
+      </div>
+
       <div class="sidebar-tabs no-print">
         <button class="active" data-admin-tab="bonds">Bonds</button>
+        <button data-admin-tab="settings">Site Settings</button>
         <button data-admin-tab="account">My Account</button>
       </div>
 
@@ -92,21 +104,67 @@
         </div>
       </section>
 
+      <!-- Site Settings -->
+      <section id="admin-settings" class="panel">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Logo</h2>
+              <p class="subtitle">Upload a logo image that appears in the header and on printed PDFs.</p>
+            </div>
+          </div>
+
+          <div class="logo-preview-area">
+            <div class="logo-preview" id="logoPreview">
+              <span class="muted small">No logo uploaded</span>
+            </div>
+            <div class="button-row">
+              <label class="btn small" style="cursor:pointer">
+                Upload logo
+                <input type="file" id="logoFileInput" accept="image/*" style="display:none" />
+              </label>
+              <button class="btn small danger" id="removeLogoBtn">Remove logo</button>
+            </div>
+            <p class="hint" style="margin-top:0.5rem">Recommended: PNG or SVG, max 200KB. Will be stored in your browser.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Credit / Footer Text</h2>
+              <p class="subtitle">This line appears at the bottom of every page and on printed PDFs.</p>
+            </div>
+          </div>
+
+          <div class="grid">
+            <label style="grid-column: 1 / -1">
+              Credit text
+              <input id="settingsCreditText" type="text" placeholder="e.g. Banking Operation - DBP" />
+            </label>
+          </div>
+
+          <div class="button-row" style="margin-top: 1rem">
+            <button class="btn primary" id="saveSettingsBtn">
+              <span class="label">Save Settings</span>
+              <span class="spinner"></span>
+            </button>
+          </div>
+          <div id="settingsOk" class="inline-success hidden"></div>
+        </div>
+      </section>
+
       <!-- Account -->
       <section id="admin-account" class="panel">
         <div class="card">
           <div class="card-header">
             <div>
               <h2>Change password</h2>
-              <p class="subtitle">Choose a strong password. Minimum 8 characters.</p>
+              <p class="subtitle">Pick a new password to replace the default.</p>
             </div>
           </div>
 
           <div class="grid">
-            <label>
-              Current password
-              <input id="curPw" type="password" autocomplete="current-password" />
-            </label>
             <label>
               New password
               <input id="newPw" type="password" autocomplete="new-password" />
@@ -125,6 +183,18 @@
               <span class="label">Update password</span>
               <span class="spinner"></span>
             </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Danger zone</h2>
+              <p class="subtitle">Clear all bonds and reset the admin password on this device.</p>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="btn danger" id="resetDataBtn">Reset all data</button>
           </div>
         </div>
       </section>
@@ -199,6 +269,7 @@
   </div>
 
   <script src="/assets/common.js"></script>
+  <script src="/assets/store.js"></script>
   <script src="/assets/admin.js"></script>
 </body>
 </html>
