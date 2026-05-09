@@ -274,8 +274,36 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 /* ---------- Init ---------- */
 document.getElementById('issueDate').value = new Date().toISOString().slice(0, 10);
 loadBonds();
+applySettings();
 
 // Refresh bonds if admin edits them in another tab
 window.addEventListener('storage', (e) => {
   if (e.key === 'bc.bonds') loadBonds();
+  if (e.key === 'bc.settings') applySettings();
 });
+
+/* ---------- Apply site settings (logo + credit) ---------- */
+function applySettings() {
+  const s = BC.getSettings();
+  // Credit line
+  const creditEl = document.getElementById('creditLine');
+  if (creditEl) creditEl.textContent = s.creditText || '';
+  // Header logo
+  const logoEl = document.getElementById('headerLogo');
+  if (logoEl) {
+    if (s.logoBase64) {
+      logoEl.innerHTML = `<img src="${s.logoBase64}" alt="Logo" />`;
+    } else {
+      logoEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V8l7-5 7 5v13"></path><path d="M9 21v-6h6v6"></path></svg>`;
+    }
+  }
+  // Print logo
+  const printEl = document.getElementById('printLogo');
+  if (printEl) {
+    if (s.logoBase64) {
+      printEl.innerHTML = `<img src="${s.logoBase64}" alt="Logo" />`;
+    } else {
+      printEl.innerHTML = '';
+    }
+  }
+}

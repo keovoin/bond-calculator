@@ -67,7 +67,7 @@ function switchTab(name) {
   document.querySelectorAll('[data-admin-tab]').forEach(b =>
     b.classList.toggle('active', b.dataset.adminTab === name)
   );
-  document.querySelectorAll('#admin-bonds, #admin-account').forEach(p =>
+  document.querySelectorAll('#admin-bonds, #admin-settings, #admin-account').forEach(p =>
     p.classList.toggle('active', p.id === `admin-${name}`)
   );
 }
@@ -355,4 +355,61 @@ document.getElementById('resetDataBtn').addEventListener('click', () => {
   BC.resetAll();
   toast('All data cleared', 'success');
   setTimeout(() => window.location.reload(), 600);
+});
+
+/* ---------- Site Settings ---------- */
+(function initSettings() {
+  const s = BC.getSettings();
+  document.getElementById('settingsCreditText').value = s.creditText || '';
+  renderLogoPreview(s.logoBase64);
+})();
+
+function renderLogoPreview(base64) {
+  const el = document.getElementById('logoPreview');
+  if (base64) {
+    el.innerHTML = `<img src="${base64}" alt="Logo preview" style="max-height:80px; max-width:200px;" />`;
+  } else {
+    el.innerHTML = `<span class="muted small">No logo uploaded</span>`;
+  }
+}
+
+document.getElementById('logoFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 300000) {
+    toast('File too large. Please use an image under 200KB.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result;
+    const s = BC.getSettings();
+    s.logoBase64 = base64;
+    BC.saveSettings(s);
+    renderLogoPreview(base64);
+    toast('Logo uploaded', 'success');
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('removeLogoBtn').addEventListener('click', () => {
+  const s = BC.getSettings();
+  s.logoBase64 = '';
+  BC.saveSettings(s);
+  renderLogoPreview('');
+  document.getElementById('logoFileInput').value = '';
+  toast('Logo removed', 'success');
+});
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const s = BC.getSettings();
+  s.creditText = document.getElementById('settingsCreditText').value.trim();
+  await withLoading(btn, new Promise(r => setTimeout(r, 150)));
+  BC.saveSettings(s);
+  const ok = document.getElementById('settingsOk');
+  ok.textContent = 'Settings saved.';
+  ok.classList.remove('hidden');
+  setTimeout(() => ok.classList.add('hidden'), 3000);
+  toast('Settings saved', 'success');
 });

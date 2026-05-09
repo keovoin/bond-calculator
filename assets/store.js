@@ -109,9 +109,32 @@ const BC = (() => {
     return seed;
   }
 
+  /* ---------- settings (credit text, logo) ---------- */
+  const SETTINGS_KEY = 'bc.settings';
+
+  const DEFAULT_SETTINGS = {
+    creditText: 'Banking Operation - DBP (For Preview & Testing only)',
+    logoBase64: '', // data:image/... string
+  };
+
+  function getSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return { ...DEFAULT_SETTINGS };
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  function saveSettings(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
   function resetAll() {
     localStorage.removeItem(BONDS_KEY);
     localStorage.removeItem(PW_KEY);
+    localStorage.removeItem(SETTINGS_KEY);
   }
 
   /* ---------- auth session (sessionStorage = per-tab) ---------- */
@@ -134,6 +157,8 @@ const BC = (() => {
     getBond,
     upsertBond,
     deleteBond,
+    getSettings,
+    saveSettings,
     resetAll,
     setSession,
     getSession,
