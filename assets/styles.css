@@ -950,3 +950,31 @@ table.schedule tbody tr { animation: rowIn var(--dur-fast) var(--ease) both; }
   overflow: hidden;
 }
 .logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+
+/* ============ Language Switch ============ */
+.lang-switch {
+  display: inline-flex;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.lang-btn {
+  background: var(--surface);
+  border: none;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  letter-spacing: 0.03em;
+}
+.lang-btn:not(:last-child) { border-right: 1.5px solid var(--border); }
+.lang-btn:hover { background: var(--surface-2); color: var(--text-soft); }
+.lang-btn.active {
+  background: var(--brand);
+  color: white;
+}
